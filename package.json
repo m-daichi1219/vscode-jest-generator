@@ -22,7 +22,6 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
@@ -43,5 +42,11 @@
   "dependencies": {
     "fs-extra": "^11.1.0",
     "jest-test-gen": "^1.4.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m-daichi1219/vscode-jest-generator.git"
+  },
+  "license": "MIT",
+  "publisher": "matu9525"
 }
