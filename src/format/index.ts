@@ -23,6 +23,7 @@ export const createTestFileName = (fileName: string, ext: string = '.ts', suffix
  */
 export const createTestFileAbsolutePath = (projectRoot: string, activeFileAbsolutePath: string, testFileName: string): string => {
     const targetFilePathAry = activeFileAbsolutePath.split(projectRoot)[1].split("\\");
+    targetFilePathAry.pop();
     const testFilePath = projectRoot + '\\tests\\' + targetFilePathAry.filter((path, idx) => {
         if (idx > 1) { return true; }
         return false;
@@ -101,6 +102,7 @@ describe('${funcName}', () => {
  * @param contents テストコード
  */
 export const writeTestFile = async (testFileAbsolutePath: string, contents: string): Promise<void> => {
+    console.log(testFileAbsolutePath);
     if (fs.existsSync(testFileAbsolutePath)) {
         const existsBuffer = await vscode.workspace.fs.readFile(vscode.Uri.file(testFileAbsolutePath));
         const existsText = Buffer.from(Uint8Array.from(existsBuffer)).toString();
