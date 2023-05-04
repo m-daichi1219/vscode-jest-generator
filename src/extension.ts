@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
 import { Disposable } from 'vscode';
 import { TextEncoder } from 'util';
-import { testEachFormat, testFormat } from './format';
-
-const constRegex = /export const/g;
+import { createTestContent, createTestEachContent, createTestFileAbsolutePath, createTestFileName, funcRegex, getFunctionName, writeTestFile } from './format';
+import * as path from 'path';
 
 export class CodelensProvider implements vscode.CodeLensProvider {
 	constructor() { }
@@ -15,13 +14,17 @@ export class CodelensProvider implements vscode.CodeLensProvider {
 		document: vscode.TextDocument,
 		token: vscode.CancellationToken
 	): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
-		const codeLenses = [];
+		const codeLenses: vscode.CodeLens[] = [];
 
 		// ドキュメントの読み取り
 		const text = document.getText();
+		const activeEditor = vscode.window.activeTextEditor;
+		if (!activeEditor) {
+			throw new Error('No activeTextEditor found');
+		}
 
-		// 正規表現で、見出しを探す
-		const regex = new RegExp(constRegex);
+		// 正規表現で見出しの検索
+		const regex = new RegExp(funcRegex);
 		let matches;
 		while ((matches = regex.exec(text)) !== null) {
 			// 見出しが見つかった行を抽出し、
@@ -29,9 +32,12 @@ export class CodelensProvider implements vscode.CodeLensProvider {
 			const line = document.lineAt(document.positionAt(matches.index).line);
 			const indexOf = line.text.indexOf(matches[0]);
 			const position = new vscode.Position(line.lineNumber, indexOf);
+
+			const functionName = getFunctionName(line);
+
 			const range = document.getWordRangeAtPosition(
 				position,
-				new RegExp(constRegex)
+				new RegExp(funcRegex)
 			);
 			if (range) {
 				// この範囲に対するCodeLensを作成する
@@ -40,18 +46,17 @@ export class CodelensProvider implements vscode.CodeLensProvider {
 						title: "test",
 						tooltip: "test",
 						command: 'vscode-jest-generator.test',
-						arguments: [document.fileName]
+						arguments: [document.fileName, functionName]
 					}),
 					new vscode.CodeLens(range, {
 						title: "test.each",
 						tooltip: "test text",
 						command: 'vscode-jest-generator.test-each',
-						arguments: [document.fileName]
+						arguments: [document.fileName, functionName]
 					}),
 				);
 			}
 		}
-		console.log('codeLenses', codeLenses);
 		return codeLenses;
 	}
 
@@ -85,50 +90,50 @@ export function activate(context: vscode.ExtensionContext) {
 	/**
 	 * test
 	 */
-	vscode.commands.registerCommand("vscode-jest-generator.test", (fileName: string) => {
+	vscode.commands.registerCommand("vscode-jest-generator.test", (activeFileAbsolutePath: string, funcName: string) => {
 		vscode.workspace.workspaceFolders?.map(async (item) => {
-			const targetFilePathAry = fileName.split(item.uri.fsPath)[1].split("\\");
-			const testFileName = targetFilePathAry.pop()?.replace('.', '.spec.');
-			const testFilePath = item.uri.fsPath + '\\tests\\' + targetFilePathAry.filter((path, idx) => {
-				if (idx > 1) { return true; }
-				return false;
-			}).join('\\') + '\\' + testFileName;
-
-			try {
-				// exists file
-				const existsBuffer = await vscode.workspace.fs.readFile(vscode.Uri.file(testFilePath));
-				const existsText = Buffer.from(Uint8Array.from(existsBuffer)).toString();
-
-				await vscode.workspace.fs.writeFile(vscode.Uri.file(testFilePath), new TextEncoder().encode(existsText + '\n' + testFormat));
-			} catch {
-				// not exists file
-				await vscode.workspace.fs.writeFile(vscode.Uri.file(testFilePath), new TextEncoder().encode(testFormat));
+			const projectRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+			const activeEditor = vscode.window.activeTextEditor;
+			if (projectRoot === undefined) return;
+			if (!activeEditor) {
+				vscode.window.showErrorMessage('No active editor found');
+				return;
 			}
+
+
+			const activeFilePath = activeFileAbsolutePath.replace(projectRoot, '');
+			const activeFileParse = path.parse(activeFilePath);
+
+			const testFileName = createTestFileName(activeFileParse.base, activeFileParse.ext);
+			const testFileAbsolutePath = createTestFileAbsolutePath(projectRoot, activeFileAbsolutePath, testFileName)
+			const contents = createTestContent(funcName, testFileAbsolutePath, activeFileAbsolutePath, activeFileParse.ext);
+
+			await writeTestFile(testFileAbsolutePath, contents);
 		});
 	});
 
 	/**
 	 * test.each
 	 */
-	vscode.commands.registerCommand("vscode-jest-generator.test-each", (fileName: string) => {
+	vscode.commands.registerCommand("vscode-jest-generator.test-each", (activeFileAbsolutePath: string, funcName: string) => {
 		vscode.workspace.workspaceFolders?.map(async (item) => {
-			const targetFilePathAry = fileName.split(item.uri.fsPath)[1].split("\\");
-			const testFileName = targetFilePathAry.pop()?.replace('.', '.spec.');
-			const testFilePath = item.uri.fsPath + '\\tests\\' + targetFilePathAry.filter((path, idx) => {
-				if (idx > 1) { return true; }
-				return false;
-			}).join('\\') + '\\' + testFileName;
-
-			try {
-				// exists file
-				const existsBuffer = await vscode.workspace.fs.readFile(vscode.Uri.file(testFilePath));
-				const existsText = Buffer.from(Uint8Array.from(existsBuffer)).toString();
-
-				await vscode.workspace.fs.writeFile(vscode.Uri.file(testFilePath), new TextEncoder().encode(existsText + '\n' + testEachFormat));
-			} catch {
-				// not exists file
-				await vscode.workspace.fs.writeFile(vscode.Uri.file(testFilePath), new TextEncoder().encode(testEachFormat));
+			const projectRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+			const activeEditor = vscode.window.activeTextEditor;
+			if (projectRoot === undefined) return;
+			if (!activeEditor) {
+				vscode.window.showErrorMessage('No active editor found');
+				return;
 			}
+
+
+			const activeFilePath = activeFileAbsolutePath.replace(projectRoot, '');
+			const activeFileParse = path.parse(activeFilePath);
+
+			const testFileName = createTestFileName(activeFileParse.base, activeFileParse.ext);
+			const testFileAbsolutePath = createTestFileAbsolutePath(projectRoot, activeFileAbsolutePath, testFileName)
+			const contents = createTestEachContent(funcName, testFileAbsolutePath, activeFileAbsolutePath, activeFileParse.ext);
+
+			await writeTestFile(testFileAbsolutePath, contents);
 		});
 	});
 }
