@@ -94,7 +94,10 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.workspaceFolders?.map(async (item) => {
 			const projectRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 			const activeEditor = vscode.window.activeTextEditor;
-			if (projectRoot === undefined) return;
+			if (projectRoot === undefined) {
+				vscode.window.showErrorMessage('No root project found');
+				return;
+			}
 			if (!activeEditor) {
 				vscode.window.showErrorMessage('No active editor found');
 				return;
@@ -105,7 +108,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const activeFileParse = path.parse(activeFilePath);
 
 			const testFileName = createTestFileName(activeFileParse.base, activeFileParse.ext);
-			const testFileAbsolutePath = createTestFileAbsolutePath(projectRoot, activeFileAbsolutePath, testFileName)
+			const testFileAbsolutePath = createTestFileAbsolutePath(projectRoot, activeFileAbsolutePath, testFileName);
 			const contents = createTestContent(funcName, testFileAbsolutePath, activeFileAbsolutePath, activeFileParse.ext);
 
 			await writeTestFile(testFileAbsolutePath, contents);
@@ -119,7 +122,10 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.workspaceFolders?.map(async (item) => {
 			const projectRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
 			const activeEditor = vscode.window.activeTextEditor;
-			if (projectRoot === undefined) return;
+			if (projectRoot === undefined) {
+				vscode.window.showErrorMessage('No root project found');
+				return;
+			}
 			if (!activeEditor) {
 				vscode.window.showErrorMessage('No active editor found');
 				return;
@@ -130,7 +136,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const activeFileParse = path.parse(activeFilePath);
 
 			const testFileName = createTestFileName(activeFileParse.base, activeFileParse.ext);
-			const testFileAbsolutePath = createTestFileAbsolutePath(projectRoot, activeFileAbsolutePath, testFileName)
+			const testFileAbsolutePath = createTestFileAbsolutePath(projectRoot, activeFileAbsolutePath, testFileName);
 			const contents = createTestEachContent(funcName, testFileAbsolutePath, activeFileAbsolutePath, activeFileParse.ext);
 
 			await writeTestFile(testFileAbsolutePath, contents);
